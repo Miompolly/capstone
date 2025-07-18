@@ -1,0 +1,35 @@
+version: '3.9'  # Updated to latest v3 spec for better compatibility
+
+services:
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8082
+    volumes:
+      - .:/app
+    ports:
+      - "8082:8082"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    networks:
+      - app-network
+
+  db:
+    image: postgres:14
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "5434:5432"
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
