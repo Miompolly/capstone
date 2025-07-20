@@ -1,3 +1,4 @@
+from tokenize import generate_tokens
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -103,82 +104,89 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status, permissions
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from rest_framework.permissions import BasePermission
+from django.core.mail import send_mail
+
+
+
+
+User = get_user_model()
+
+
 class VerifyUserView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if request.user.role != 'admin':
-            return Response({"detail": "Only admin can verify users."}, status=status.HTTP_403_FORBIDDEN)
-        
-        user_id = request.data.get("user_id")
+            return Response(
+                {"detail": "Only admin can verify users."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response(
+                {"detail": "User ID is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
             user = User.objects.get(id=user_id)
-            user.is_verified = True 
-            user.is_active = True
-            user.save()
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-            # Prepare email
-            subject = "Welcome to SheNation - Account Verified"
-            from_email = settings.DEFAULT_FROM_EMAIL
-            to_email = [user.email]
-            login_url = "http://localhost:3000/auth/login"
+        # Activate the user
+        user.is_active = True
+        user.save()
 
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>SheNation Account Verified</title>
-            </head>
-            <body style="margin:0; padding:0; font-family:Segoe UI, sans-serif; background-color:#f4f6f9;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                        <td align="center">
-                            <table width="600" cellpadding="0" cellspacing="0" style="background:#fff; margin-top:40px; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.08);">
-                                <tr>
-                                    <td style="padding:30px; text-align:center;">
-                                        <h1 style="color:#e91e63;">Welcome to SheNation 🌸</h1>
-                                        <p style="font-size:16px; color:#333;">
-                                            Hi {user.name or user.email},<br><br>
-                                            We're excited to inform you that your SheNation account has been <strong>successfully verified</strong> and activated.<br><br>
-                                            You can now access all features of the platform and join our amazing community.
-                                        </p>
-                                        <a href="{login_url}" 
-                                           style="display:inline-block; margin-top:20px; padding:12px 24px; background-color:#e91e63; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold;">
-                                            Login to SheNation
-                                        </a>
-                                        <p style="margin-top:30px; font-size:14px; color:#888;">
-                                            If you did not request this, please contact support.
-                                        </p>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="text-align:center; font-size:12px; color:#aaa; padding-bottom:20px;">
-                                        &copy; SheNation {__import__('datetime').datetime.now().year}. All rights reserved.
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                </table>
-            </body>
-            </html>
-            """
+        # Prepare HTML email
+        subject = "✅ Your Account Has Been Verified"
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [user.email]
 
-            text_content = f"Hi {user.name or user.email}, your SheNation account has been verified. You can now log in at {login_url}."
+        text_content = (
+            f"Hello {user.name},\n\n"
+            "Your account has been successfully verified and is now active.\n\n"
+            "Thank you!"
+        )
 
-            # Send email
-            email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; color: #333;">
+            <h2 style="color: #2e6c80;">Account Verified ✅</h2>
+            <p>Hello <strong>{user.name}</strong>,</p>
+            <p>Your account has been <span style="color: green;"><strong>successfully verified</strong></span> and is now active.</p>
+            <p style="margin-top: 20px;">Thank you for joining our platform.</p>
+            <p style="color: #888; font-size: 13px; margin-top: 30px;">This is an automated message. Please do not reply.</p>
+        </div>
+        """
+
+        try:
+            email = EmailMultiAlternatives(subject, text_content, from_email, recipient_list)
             email.attach_alternative(html_content, "text/html")
             email.send()
-            return Response({
-                "detail": f"User {user.email} has been verified and notified via email.",
-                "redirect_url": login_url
-            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"detail": "User verified, but email could not be sent.", "error": str(e)},
+                status=status.HTTP_200_OK
+            )
 
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-
+        return Response({
+            "detail": f"User with ID {user.id} has been verified and notified via email.",
+            "user_id": user.id,
+            "email": user.email
+        }, status=status.HTTP_200_OK)
 
 
 class GetAllUsersView(APIView):
@@ -283,6 +291,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from .serializers import BookingCreateSerializer
 
+
 class BookMentorView(generics.CreateAPIView):
     serializer_class = BookingCreateSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -290,10 +299,26 @@ class BookMentorView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        booking = serializer.save()
+
+        mentor = booking.mentor
+        if mentor and mentor.email:
+            subject = "New Booking Received"
+            message = (
+                f"Hello {mentor.name},\n\n"
+                f"You have received a new booking from {request.user.name}.\n"
+                f"Please log in to your dashboard to view the details."
+            )
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [mentor.email]
+
+            try:
+                send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+            except Exception as e:
+                print(f"Error sending booking email: {e}")
 
         return Response({
-            "message": "Booking successfully created.",
+            "message": "Booking successfully created and mentor notified by email.",
             "booking": serializer.data,
         }, status=status.HTTP_201_CREATED)
 
