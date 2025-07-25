@@ -298,8 +298,15 @@ export interface Booking {
   id: number;
   mentor: string;
   mentee: string;
+  mentor_id: number;
+  mentee_id: number;
   day: string;
   time: string | null;
   title: string | null;
   note: string | null;
+  status: "pending" | "approved" | "denied" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  meeting_batch?: number;
+  google_meet_link?: string;
 }

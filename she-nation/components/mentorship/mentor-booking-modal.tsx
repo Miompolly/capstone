@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useBookMentorMutation } from "@/lib/api/bookingApi";
 import { useAppSelector } from "@/lib/hooks";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import type { Mentor } from "@/lib/types/api";
 
 interface MentorBookingModalProps {
@@ -92,17 +92,25 @@ export function MentorBookingModal({
     });
 
     try {
-      const result = await bookMentor({
+      console.log("Starting booking submission...");
+
+      const bookingData = {
         mentor: mentor.id,
         day: selectedDate,
         time: selectedTime,
         title: sessionTitle,
         note: sessionNote,
-      }).unwrap();
+      };
+
+      console.log("Booking data to submit:", bookingData);
+
+      const result = await bookMentor(bookingData).unwrap();
 
       console.log("Booking success:", result);
 
-      toast.success("Booking created successfully!");
+      toast.success(
+        "🎉 Booking created successfully! Waiting for mentor approval."
+      );
 
       // Reset form
       setSelectedDate("");
@@ -111,10 +119,34 @@ export function MentorBookingModal({
       setSessionNote("");
       onClose();
     } catch (error: any) {
-      console.error("Booking error:", error);
-      toast.error(
-        error?.data?.message || error?.message || "Failed to create booking"
-      );
+      console.error("Booking error details:", {
+        error,
+        status: error?.status,
+        data: error?.data,
+        message: error?.message,
+        originalStatus: error?.originalStatus,
+      });
+
+      // More detailed error messages
+      let errorMessage = "Failed to create booking";
+
+      if (error?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error?.status === 403) {
+        errorMessage = "You don't have permission to create bookings.";
+      } else if (error?.status === 400) {
+        errorMessage =
+          error?.data?.message ||
+          "Invalid booking data. Please check your inputs.";
+      } else if (error?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error(`❌ ${errorMessage}`);
     }
   };
 
@@ -272,7 +304,11 @@ export function MentorBookingModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1 bg-black text-white">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="flex-1 bg-black text-white"
+            >
               {isLoading ? "Booking..." : "Book Session"}
             </Button>
           </div>

@@ -10,6 +10,8 @@ import {
   X,
   Trash2,
   Filter,
+  Video,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,8 +30,14 @@ import {
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { BulkBookingActions } from "@/components/mentorship/bulk-booking-actions";
+import { BookingDecisionButtons } from "@/components/mentorship/booking-decision-buttons";
 import toast from "react-hot-toast";
 import type { Booking } from "@/lib/types/api";
+
+// Utility function to create a new Google Meet room
+const createGoogleMeetRoom = (): string => {
+  return "https://meet.google.com/new";
+};
 
 function MentorBookingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -53,38 +61,6 @@ function MentorBookingsPage() {
       statusFilter === "all" || booking.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  const handleApproveBooking = async (booking: Booking) => {
-    try {
-      await updateBookingStatus({
-        id: booking.id,
-        status: { status: "approved" },
-      }).unwrap();
-      toast.success(`Booking with ${booking.mentee} has been approved`);
-    } catch (error) {
-      toast.error("Failed to approve booking");
-    }
-  };
-
-  const handleDenyBooking = async (booking: Booking) => {
-    if (
-      !confirm(
-        `Are you sure you want to deny the booking with ${booking.mentee}?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await updateBookingStatus({
-        id: booking.id,
-        status: { status: "denied" },
-      }).unwrap();
-      toast.success(`Booking with ${booking.mentee} has been denied`);
-    } catch (error) {
-      toast.error("Failed to deny booking");
-    }
-  };
 
   const handleDeleteBooking = async (booking: Booking) => {
     if (
@@ -317,6 +293,74 @@ function MentorBookingsPage() {
                             {booking.note}
                           </p>
                         )}
+                        {booking.status === "approved" && (
+                          <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                            {booking.google_meet_link ? (
+                              // Show auto-generated meeting link
+                              <>
+                                <p className="text-sm font-medium text-green-800 flex items-center gap-1">
+                                  <Video className="w-4 h-4" />
+                                  Meeting Room Ready
+                                </p>
+                                <button
+                                  onClick={() =>
+                                    window.open(
+                                      booking.google_meet_link,
+                                      "_blank"
+                                    )
+                                  }
+                                  className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition-colors mt-1 flex items-center gap-1"
+                                >
+                                  <Video className="w-3 h-3" />
+                                  Join Google Meet Room
+                                </button>
+                              </>
+                            ) : (
+                              // Show manual meeting options
+                              <>
+                                <p className="text-sm font-medium text-blue-800 flex items-center gap-1">
+                                  <Video className="w-4 h-4" />
+                                  Meeting Options Available
+                                </p>
+                                <div className="flex gap-2 mt-2">
+                                  <button
+                                    onClick={() =>
+                                      window.open(
+                                        "https://meet.google.com/new",
+                                        "_blank"
+                                      )
+                                    }
+                                    className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors"
+                                  >
+                                    Google Meet
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      window.open(
+                                        "https://zoom.us/start/videomeeting",
+                                        "_blank"
+                                      )
+                                    }
+                                    className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700 transition-colors"
+                                  >
+                                    Zoom
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      window.open(
+                                        "https://teams.microsoft.com/start",
+                                        "_blank"
+                                      )
+                                    }
+                                    className="text-xs bg-blue-800 text-white px-2 py-1 rounded hover:bg-blue-900 transition-colors"
+                                  >
+                                    Teams
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="py-4 px-6">
@@ -341,27 +385,42 @@ function MentorBookingsPage() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-2">
-                        {booking.status === "pending" && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleApproveBooking(booking)}
-                              title="Approve Booking"
-                              className="text-green-600 hover:text-green-700"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDenyBooking(booking)}
-                              title="Deny Booking"
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </>
+                        <BookingDecisionButtons
+                          booking={booking}
+                          onDecisionMade={(bookingId, decision) => {
+                            // Refresh the bookings list
+                            refetch();
+                            toast.success(
+                              decision === "approved"
+                                ? "✅ Booking approved successfully!"
+                                : "❌ Booking denied successfully!"
+                            );
+                          }}
+                        />
+                        {booking.status === "approved" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              window.open(
+                                booking.google_meet_link ||
+                                  createGoogleMeetRoom(),
+                                "_blank"
+                              )
+                            }
+                            title={
+                              booking.google_meet_link
+                                ? "Join Meeting Room"
+                                : "Start New Google Meet"
+                            }
+                            className={
+                              booking.google_meet_link
+                                ? "text-green-600 hover:text-green-700"
+                                : "text-blue-600 hover:text-blue-700"
+                            }
+                          >
+                            <Video className="w-4 h-4" />
+                          </Button>
                         )}
                         <Button
                           variant="ghost"

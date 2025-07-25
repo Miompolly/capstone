@@ -121,7 +121,7 @@ class BookingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Booking
-        fields = ['id', 'mentor', 'mentee', 'mentor_id', 'mentee_id', 'day', 'time', 'title', 'note', 'status', 'created_at', 'updated_at']
+        fields = ['id', 'mentor', 'mentee', 'mentor_id', 'mentee_id', 'day', 'time', 'title', 'note', 'status', 'created_at', 'updated_at', 'meeting_batch', 'google_meet_link']
 
 class BookingUpdateSerializer(serializers.ModelSerializer):
     class Meta:

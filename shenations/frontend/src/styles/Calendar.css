@@ -1,0 +1,18 @@
+.meeting-info {
+  margin-top: 4px;
+  font-size: 0.9em;
+}
+
+.meet-link {
+  background: #1a73e8;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-decoration: none;
+  margin-right: 8px;
+}
+
+.batch-info {
+  color: #666;
+  font-size: 0.8em;
+}

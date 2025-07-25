@@ -67,38 +67,65 @@ export function BulkBookingActions({
     setIsLoading(true);
 
     try {
+      console.log(
+        `Starting bulk ${bulkAction} for ${selectedBookings.size} bookings`
+      );
+
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
+
+      // Import the token utility function
+      const { getAuthToken } = await import("@/lib/auth/auth-service");
+      const token = getAuthToken();
+
+      if (!token) {
+        toast.error("❌ Authentication required. Please log in again.");
+        return;
+      }
+
+      const bookingIds = Array.from(selectedBookings);
+      console.log(`Bulk ${bulkAction} request data:`, {
+        action: bulkAction,
+        booking_ids: bookingIds,
+      });
+
       const response = await fetch(
         `${baseUrl}/api/auth/bookings/bulk-actions/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             action: bulkAction,
-            booking_ids: Array.from(selectedBookings),
+            booking_ids: bookingIds,
           }),
         }
       );
 
+      console.log(`Bulk ${bulkAction} response status:`, response.status);
       const data = await response.json();
+      console.log(`Bulk ${bulkAction} response data:`, data);
 
       if (response.ok) {
         const { successful_count, failed_count } = data;
 
         if (successful_count > 0) {
+          const successMessage =
+            bulkAction === "approve"
+              ? `✅ Successfully approved ${successful_count} booking(s)! Google Meet rooms have been created.`
+              : `❌ Successfully denied ${successful_count} booking(s). Mentees have been notified.`;
+
           toast.success(
-            `Successfully ${bulkAction}d ${successful_count} booking(s)${
-              failed_count > 0 ? `. ${failed_count} failed.` : ""
+            `${successMessage}${
+              failed_count > 0 ? ` ${failed_count} failed.` : ""
             }`
           );
         }
 
         if (failed_count > 0 && successful_count === 0) {
-          toast.error(`Failed to ${bulkAction} ${failed_count} booking(s)`);
+          toast.error(`❌ Failed to ${bulkAction} ${failed_count} booking(s)`);
         }
 
         // Reset selections
@@ -108,11 +135,28 @@ export function BulkBookingActions({
         // Notify parent component
         onBulkActionComplete?.();
       } else {
-        toast.error(data.detail || `Failed to ${bulkAction} bookings`);
+        let errorMessage = `Failed to ${bulkAction} bookings`;
+
+        if (response.status === 401) {
+          errorMessage = "Authentication required. Please log in again.";
+        } else if (response.status === 403) {
+          errorMessage = "You don't have permission to perform this action.";
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        }
+
+        toast.error(`❌ ${errorMessage}`);
       }
     } catch (error) {
-      console.error("Bulk action error:", error);
-      toast.error(`Failed to ${bulkAction} bookings`);
+      console.error("Bulk action error:", {
+        error,
+        action: bulkAction,
+        bookingIds: Array.from(selectedBookings),
+      });
+
+      toast.error(
+        `❌ Network error. Failed to ${bulkAction} bookings. Please check your connection and try again.`
+      );
     } finally {
       setIsLoading(false);
     }
@@ -268,13 +312,18 @@ export function useBulkBookingActions() {
     try {
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
+
+      // Import the token utility function
+      const { getAuthToken } = await import("@/lib/auth/auth-service");
+      const token = getAuthToken();
+
       const response = await fetch(
         `${baseUrl}/api/auth/bookings/bulk-actions/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             action,

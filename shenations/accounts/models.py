@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
 from django.conf import settings
+import hashlib
 
 class UserManager(BaseUserManager):
     def create_user(self, email, name, password=None, **extra_fields):
@@ -68,6 +69,7 @@ class Booking(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('denied', 'Denied'),
+        ('cancelled', 'Cancelled'),
     ]
 
     mentor = models.ForeignKey(
@@ -83,6 +85,8 @@ class Booking(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    meeting_batch = models.IntegerField(null=True, blank=True)
+    google_meet_link = models.URLField(max_length=200, null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -129,6 +133,25 @@ class Booking(models.Model):
             return True
         return False
 
+    def cancel(self, cancelled_by=None, send_email=True):
+        """Cancel the booking session"""
+        if self.status in ['pending', 'approved']:
+            self.status = 'cancelled'
+            self.save()
+
+            # Send email notification
+            if send_email:
+                try:
+                    from .services import BookingNotificationService
+                    # Note: send_booking_cancelled_email method not implemented yet
+                    # BookingNotificationService.send_booking_cancelled_email(self)
+                    pass
+                except ImportError:
+                    pass  # Service not available
+
+            return True
+        return False
+
     def can_be_modified_by(self, user):
         """Check if user can modify this booking"""
         return user == self.mentor or user.role == 'admin'
@@ -145,20 +168,62 @@ class Booking(models.Model):
         """Check if booking is denied"""
         return self.status == 'denied'
 
+    def is_cancelled(self):
+        """Check if booking is cancelled"""
+        return self.status == 'cancelled'
+
     @property
     def status_display(self):
         """Get human-readable status"""
         return dict(self.STATUS_CHOICES).get(self.status, self.status)
 
-    def save(self, *args, **kwargs):
-        """Override save to send email notifications for new bookings"""
-        is_new = self.pk is None
-        super().save(*args, **kwargs)
+    def generate_meet_link(self):
+        if not self.meeting_batch:
+            return None
+        # Create a unique hash based on mentor ID and batch number
+        hash_input = f"{self.mentor.id}-{self.meeting_batch}"
+        hash_object = hashlib.sha256(hash_input.encode())
+        meet_code = hash_object.hexdigest()[:10]
+        return f"https://meet.google.com/{meet_code}"
 
-        # Send email notification for new booking requests
+    def save(self, *args, **kwargs):
+        # Check if this is a new booking
+        is_new = self._state.adding
+        
+        # Handle batch/meet link generation for approved status
+        if self.status == 'approved' and not self.google_meet_link:
+            # Get the latest batch number for this mentor
+            latest_batch = Booking.objects.filter(
+                mentor=self.mentor,
+                meeting_batch__isnull=False
+            ).order_by('-meeting_batch').first()
+
+            # Get count of approved bookings in the latest batch
+            if latest_batch and latest_batch.meeting_batch:
+                batch_count = Booking.objects.filter(
+                    mentor=self.mentor,
+                    meeting_batch=latest_batch.meeting_batch
+                ).count()
+
+                if batch_count < 10:
+                    self.meeting_batch = latest_batch.meeting_batch
+                else:
+                    self.meeting_batch = (latest_batch.meeting_batch or 0) + 1
+            else:
+                self.meeting_batch = 1
+
+            self.google_meet_link = self.generate_meet_link()
+
+        # Handle initial pending status
         if is_new and self.status == 'pending':
+            # Send notification email to mentor
             try:
-                from .services import BookingNotificationService
-                BookingNotificationService.send_new_booking_request_email(self)
-            except ImportError:
-                pass  # Service not available
+                subject = "New Booking Request"
+                message = f"You have a new booking request from {self.mentee.name}"
+                from_email = settings.DEFAULT_FROM_EMAIL
+                recipient_list = [self.mentor.email]
+                send_mail(subject, message, from_email, recipient_list)
+            except Exception as e:
+                print(f"Error sending email: {e}")
+
+        super().save(*args, **kwargs)

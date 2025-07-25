@@ -396,52 +396,21 @@ class BookingDecisionView(APIView):
                 'detail': 'Only the mentor can approve or deny this booking.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        action = request.data.get('action', '').lower()
-        google_meet_link = request.data.get('google_meet_link', '').strip()
-
-        # Check if booking can be modified based on action
-        if action in ['approve', 'deny'] and not booking.is_pending():
+        # Check if booking is still pending
+        if not booking.is_pending():
             return Response({
                 'detail': f'Booking is already {booking.status}. Only pending bookings can be approved or denied.'
             }, status=status.HTTP_400_BAD_REQUEST)
-        elif action == 'cancel' and booking.status in ['denied', 'cancelled']:
-            return Response({
-                'detail': f'Booking is already {booking.status}. Cannot cancel a {booking.status} booking.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        action = request.data.get('action', '').lower()
 
         if action == 'approve':
-            # Set the Google Meet link if provided
-            if google_meet_link:
-                booking.google_meet_link = google_meet_link
-            elif not booking.google_meet_link:
-                # Auto-generate if no link provided and none exists
-                booking.google_meet_link = booking.generate_meet_link()
-
             success = booking.approve(approved_by=request.user, send_email=True)
             if success:
-                # Get all bookings in the same batch
-                batch_bookings = Booking.objects.filter(
-                    mentor=booking.mentor,
-                    meeting_batch=booking.meeting_batch
-                )
-                batch_members = [
-                    {
-                        'mentee_name': b.mentee.name,
-                        'mentee_email': b.mentee.email
-                    } for b in batch_bookings
-                ]
-                
                 serializer = BookingSerializer(booking)
                 return Response({
                     'detail': f'Booking with {booking.mentee.name} has been approved. Notification email sent.',
-                    'booking': serializer.data,
-                    'meeting_info': {
-                        'batch_number': booking.meeting_batch,
-                        'google_meet_link': booking.google_meet_link,
-                        'batch_members': batch_members,
-                        'batch_size': len(batch_members),
-                        'max_batch_size': 10
-                    }
+                    'booking': serializer.data
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
@@ -461,22 +430,9 @@ class BookingDecisionView(APIView):
                     'detail': 'Failed to deny booking.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-        elif action == 'cancel':
-            success = booking.cancel(cancelled_by=request.user, send_email=True)
-            if success:
-                serializer = BookingSerializer(booking)
-                return Response({
-                    'detail': f'Booking with {booking.mentee.name} has been cancelled. Notification email sent.',
-                    'booking': serializer.data
-                }, status=status.HTTP_200_OK)
-            else:
-                return Response({
-                    'detail': 'Failed to cancel booking.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-
         else:
             return Response({
-                'detail': 'Invalid action. Use "approve", "deny", or "cancel".'
+                'detail': 'Invalid action. Use "approve" or "deny".'
             }, status=status.HTTP_400_BAD_REQUEST)
 
 class BookingDetailView(APIView):
@@ -575,9 +531,6 @@ class BulkBookingActionsView(APIView):
         for booking in bookings:
             try:
                 if action == 'approve':
-                    # Auto-generate Google Meet link if not already present
-                    if not booking.google_meet_link:
-                        booking.google_meet_link = booking.generate_meet_link()
                     success = booking.approve(approved_by=request.user, send_email=True)
                 else:  # deny
                     success = booking.deny(denied_by=request.user, send_email=True)

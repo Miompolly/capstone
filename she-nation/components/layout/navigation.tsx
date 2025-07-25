@@ -56,13 +56,19 @@ const getNavigationItems = (
       name: "Mentorship",
       href: "/mentorship",
       icon: User2,
-      roles: ["Mentor", "mentee"],
+      roles: ["mentee"],
     },
     {
       name: "Bookings",
       href: "/bookings",
       icon: Calendar,
       roles: ["mentee"],
+    },
+    {
+      name: "My Calendar",
+      href: "/calendar",
+      icon: Calendar,
+      roles: ["Mentor", "mentee", "admin"],
     },
     {
       name: "Jobs",
@@ -74,7 +80,7 @@ const getNavigationItems = (
       name: "Booking Requests",
       href: "/mentor-bookings",
       icon: UserCheck,
-      roles: ["Mentor", "admin"],
+      roles: ["Mentor"],
     },
     {
       name: "Analytics",

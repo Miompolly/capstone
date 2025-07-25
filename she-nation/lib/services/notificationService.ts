@@ -62,7 +62,10 @@ class NotificationService {
     try {
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
-      const token = localStorage.getItem("access_token");
+
+      // Import the token utility function
+      const { getAuthToken } = await import("@/lib/auth/auth-service");
+      const token = getAuthToken();
 
       if (!token) {
         return { notifications: [], unreadCount: 0, lastChecked: null };

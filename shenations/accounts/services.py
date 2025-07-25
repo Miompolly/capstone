@@ -29,6 +29,7 @@ class BookingNotificationService:
                 'booking_id': booking.id,
                 'platform_url': getattr(settings, 'FRONTEND_URL', 'http://localhost:3000'),
                 'current_year': timezone.now().year,
+                'google_meet_link': booking.google_meet_link,
             }
             
             # HTML email content
@@ -69,6 +70,7 @@ class BookingNotificationService:
                             <p><strong>Time:</strong> {context['booking_time']}</p>
                             <p><strong>Mentor:</strong> {context['mentor_name']}</p>
                             {f"<p><strong>Note:</strong> {context['session_note']}</p>" if context['session_note'] else ""}
+                            {f"<p><strong>🎥 Meeting Link:</strong> <a href='{context['google_meet_link']}' style='color: #1a73e8; text-decoration: none;'>Join Google Meet</a></p>" if context.get('google_meet_link') else ""}
                         </div>
                         
                         <p>🎯 <strong>What's Next?</strong></p>
