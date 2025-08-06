@@ -6,6 +6,7 @@ import coursesSlice from "./slices/coursesSlice";
 import jobsSlice from "./slices/jobsSlice";
 import mentorshipSlice from "./slices/mentorshipSlice";
 import forumSlice from "./slices/forumSlice";
+import { analyticsApi } from "./slices/analyticsApiSlice";
 
 export const store = configureStore({
   reducer: {
@@ -16,9 +17,12 @@ export const store = configureStore({
     jobs: jobsSlice,
     mentorship: mentorshipSlice,
     forum: forumSlice,
+    [analyticsApi.reducerPath]: analyticsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(baseApi.middleware),
+    getDefaultMiddleware()
+      .concat(baseApi.middleware)
+      .concat(analyticsApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

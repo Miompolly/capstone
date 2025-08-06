@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { Star, Users, Clock } from "lucide-react"
-import Link from "next/link"
+import { Star, Users, Clock } from "lucide-react";
+import Link from "next/link";
 
 const featuredCourses = [
   {
@@ -37,12 +37,14 @@ const featuredCourses = [
     price: "$299",
     badge: "Expert Level",
   },
-]
+];
 
 export function FeaturedCourses() {
   return (
     <div className="mb-12">
-      <h2 className="text-2xl font-bold font-poppins text-gray-900 mb-6">Featured Courses</h2>
+      <h2 className="text-2xl font-bold font-poppins text-gray-900 mb-6">
+        Featured Courses
+      </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {featuredCourses.map((course) => (
           <Link key={course.id} href={`/courses/${course.id}`}>
@@ -68,7 +70,9 @@ export function FeaturedCourses() {
                 <h3 className="font-semibold text-gray-900 text-lg mb-2 group-hover:text-purple-600 transition-colors">
                   {course.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-4">by {course.instructor}</p>
+                <p className="text-gray-600 text-sm mb-4">
+                  by {course.instructor}
+                </p>
                 <div className="flex items-center justify-between text-sm text-gray-500">
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center">
@@ -91,5 +95,5 @@ export function FeaturedCourses() {
         ))}
       </div>
     </div>
-  )
+  );
 }

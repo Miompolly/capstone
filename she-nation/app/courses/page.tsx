@@ -1,5 +1,5 @@
-import { AuthGuard } from "@/components/auth/auth-guard"
-import { CoursesPageContent } from "@/components/courses/courses-page-content"
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { CoursesPageContent } from "@/components/courses/courses-page-content";
 
 export default function CoursesPage() {
   return (
@@ -10,5 +10,5 @@ export default function CoursesPage() {
         </div>
       </div>
     </AuthGuard>
-  )
+  );
 }

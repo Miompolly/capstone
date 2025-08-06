@@ -1,53 +1,40 @@
-"use client"
+"use client";
 
-import { useAppSelector } from "@/lib/hooks"
-import { DashboardHeader } from "./dashboard-header"
-import { MentorDashboard } from "./role-dashboards/mentor-dashboard"
-import { LecturerDashboard } from "./role-dashboards/lecturer-dashboard"
-import { CompanyDashboard } from "./role-dashboards/company-dashboard"
-import { StatsCards } from "./stats-cards"
-// import { RecentActivity } from "./recent-activity"
-import { UpcomingSessions } from "./upcoming-sessions"
-import { CourseProgress } from "./course-progress"
-import { QuickActions } from "./quick-actions"
+import { useAppSelector } from "@/lib/hooks";
+import { DashboardHeader } from "./dashboard-header";
+import { MentorDashboard } from "./role-dashboards/mentor-dashboard";
+import MenteeDashboard from "./role-dashboards/mentee-dashboard";
+import { AdminDashboard } from "./role-dashboards/admin-dashboard";
+import { LecturerDashboard } from "./role-dashboards/lecturer-dashboard";
+import { CompanyDashboard } from "./role-dashboards/company-dashboard";
 
 export function RoleBasedDashboard() {
-  const { user } = useAppSelector((state) => state.auth)
+  const { user } = useAppSelector((state) => state.auth);
 
-  if (!user) return null
+  if (!user) return null;
 
   const renderRoleSpecificDashboard = () => {
-    switch (user.role) {
+    switch (user.role?.toLowerCase()) {
+      case "admin":
+        return <AdminDashboard />;
       case "mentor":
-        return <MentorDashboard />
+        return <MentorDashboard />;
       case "lecturer":
-        return <LecturerDashboard />
+      case "expert":
+        return <LecturerDashboard />;
       case "company":
-        return <CompanyDashboard />
+        return <CompanyDashboard />;
+      case "mentee":
       default:
         // Default mentee dashboard
-        return (
-          <>
-            <StatsCards />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-              <div className="lg:col-span-2 space-y-6">
-                {/* <RecentActivity /> */}
-                <CourseProgress />
-              </div>
-              <div className="space-y-6">
-                <UpcomingSessions />
-                <QuickActions />
-              </div>
-            </div>
-          </>
-        )
+        return <MenteeDashboard />;
     }
-  }
+  };
 
   return (
     <>
       <DashboardHeader />
       {renderRoleSpecificDashboard()}
     </>
-  )
+  );
 }

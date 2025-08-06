@@ -33,14 +33,24 @@ class Lesson(models.Model):
         return f"{self.title} - {self.course.title}"
 
 class Enrollment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('denied', 'Denied'),
+    ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     progress = models.PositiveIntegerField(default=0)
     certificate_earned = models.BooleanField(default=False)
     enrolled_on = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        unique_together = ['user', 'course']
+
     def __str__(self):
-        return f"{self.user} enrolled in {self.course}"
+        return f"{self.user} enrolled in {self.course} ({self.status})"
 
 class LessonProgress(models.Model):
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='lesson_progress')

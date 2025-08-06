@@ -17,7 +17,7 @@
   }
 
   .glass-effect {
-    @apply bg-white/20 backdrop-blur-lg border border-white/30;
+    @apply bg-white/90 backdrop-blur-lg border border-gray-200 shadow-lg;
   }
 
   .hover-lift {
@@ -30,6 +30,19 @@
 
   .animate-pulse-slow {
     animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Dashboard specific styles */
+  .dashboard-card {
+    @apply bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300;
+  }
+
+  .dashboard-container {
+    @apply min-h-screen bg-gray-50 p-6;
+  }
+
+  .dashboard-content {
+    @apply max-w-7xl mx-auto space-y-8;
   }
 }
 

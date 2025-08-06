@@ -1,16 +1,19 @@
-"use client"
+"use client";
 
-import { Search, Filter } from "lucide-react"
-import { useState } from "react"
+import { Search, Filter } from "lucide-react";
+import { useState } from "react";
 
 export function CoursesHeader() {
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <div className="mb-8">
-      <h1 className="text-3xl font-bold font-poppins gradient-text mb-4">Discover Your Next Skill</h1>
+      <h1 className="text-3xl font-bold font-poppins gradient-text mb-4">
+        Discover Your Next Skill
+      </h1>
       <p className="text-gray-600 mb-6">
-        Access world-class courses designed by industry experts to accelerate your career growth
+        Access world-class courses designed by industry experts to accelerate
+        your career growth
       </p>
 
       <div className="flex flex-col md:flex-row gap-4">
@@ -30,5 +33,5 @@ export function CoursesHeader() {
         </button>
       </div>
     </div>
-  )
+  );
 }

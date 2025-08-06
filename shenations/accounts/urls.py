@@ -4,7 +4,7 @@ from .views import (
     BookMentorView, MentorBookingsListView, MenteeBookingsListView, BookingDetailView, BookingDecisionView, BulkBookingActionsView, BookingAnalyticsView,
     MentorCalendarBookingsAPIView, RegisterView, LoginView, MentorListAPIView,
     VerifyUserView, GetAllUsersView, UserDetailView,
-    UserProfileView, UserProfileUpdateView
+    UserProfileView, UserProfileUpdateView, MentorAnalyticsView
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -26,4 +26,5 @@ urlpatterns = [
     path('bookings/<int:pk>/decide/', BookingDecisionView.as_view(), name='booking-decision'),
     path('bookings/bulk-actions/', BulkBookingActionsView.as_view(), name='bulk-booking-actions'),
     path('bookings/analytics/', BookingAnalyticsView.as_view(), name='booking-analytics'),
+    path('analytics/mentor/', MentorAnalyticsView.as_view(), name='mentor-analytics'),
 ]

@@ -69,7 +69,6 @@ class Booking(models.Model):
         ('pending', 'Pending'),
         ('approved', 'Approved'),
         ('denied', 'Denied'),
-        ('cancelled', 'Cancelled'),
     ]
 
     mentor = models.ForeignKey(
@@ -133,25 +132,6 @@ class Booking(models.Model):
             return True
         return False
 
-    def cancel(self, cancelled_by=None, send_email=True):
-        """Cancel the booking session"""
-        if self.status in ['pending', 'approved']:
-            self.status = 'cancelled'
-            self.save()
-
-            # Send email notification
-            if send_email:
-                try:
-                    from .services import BookingNotificationService
-                    # Note: send_booking_cancelled_email method not implemented yet
-                    # BookingNotificationService.send_booking_cancelled_email(self)
-                    pass
-                except ImportError:
-                    pass  # Service not available
-
-            return True
-        return False
-
     def can_be_modified_by(self, user):
         """Check if user can modify this booking"""
         return user == self.mentor or user.role == 'admin'
@@ -167,10 +147,6 @@ class Booking(models.Model):
     def is_denied(self):
         """Check if booking is denied"""
         return self.status == 'denied'
-
-    def is_cancelled(self):
-        """Check if booking is cancelled"""
-        return self.status == 'cancelled'
 
     @property
     def status_display(self):

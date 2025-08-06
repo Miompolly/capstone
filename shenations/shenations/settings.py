@@ -129,9 +129,23 @@ CORS_ALLOW_ALL_ORIGINS = True # Consider sexplicitly listing allowed origins
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:8082", 
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:8082",
     "http://92.113.31.238",
-    "https://capstone-o3oh.onrender.com", 
+    "https://capstone-o3oh.onrender.com",
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 ALLOWED_HOSTS = ['*']
 

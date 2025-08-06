@@ -44,13 +44,13 @@ const getNavigationItems = (
       name: "Dashboard",
       href: "/dashboard",
       icon: Home,
-      roles: ["admin", "Mentor", "mentee", "Expert", "company"],
+      roles: ["admin", "mentor", "mentee", "expert", "company"],
     },
     {
       name: "Courses",
       href: "/courses",
       icon: BookOpen,
-      roles: ["admin", "Mentor", "mentee", "Expert"],
+      roles: ["admin", "mentor", "mentee", "expert"],
     },
     {
       name: "Mentorship",
@@ -58,35 +58,29 @@ const getNavigationItems = (
       icon: User2,
       roles: ["mentee"],
     },
-    {
-      name: "Bookings",
-      href: "/bookings",
-      icon: Calendar,
-      roles: ["mentee"],
-    },
-    {
+        {
       name: "My Calendar",
       href: "/calendar",
       icon: Calendar,
-      roles: ["Mentor", "mentee", "admin"],
+      roles: ["mentor", "mentee", "admin"],
     },
     {
       name: "Jobs",
       href: "/jobs",
       icon: Building2,
-      roles: ["admin", "mentee", "company"],
+      roles: ["admin", "mentee"],
     },
     {
       name: "Booking Requests",
       href: "/mentor-bookings",
       icon: UserCheck,
-      roles: ["Mentor"],
+      roles: ["mentor"],
     },
     {
       name: "Analytics",
       href: "/mentor-analytics",
       icon: BarChart3,
-      roles: ["Mentor", "admin"],
+      roles: ["mentor", "admin"],
     },
     {
       name: "Users",
@@ -100,7 +94,7 @@ const getNavigationItems = (
     return baseItems;
   }
 
-  const userRole = role || "mentee";
+  const userRole = (role || "mentee").toLowerCase();
   const allItems = [...baseItems, ...authenticatedItems];
 
   return allItems.filter((item) => item.roles.includes(userRole));
@@ -130,7 +124,7 @@ export function Navigation() {
         return "bg-red-100 text-red-600";
       case "mentor":
         return "bg-purple-100 text-purple-600";
-      case "Expert":
+      case "expert":
         return "bg-blue-100 text-blue-600";
       case "company":
         return "bg-green-100 text-green-600";

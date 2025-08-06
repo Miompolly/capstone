@@ -322,3 +322,202 @@ class LessonDetailView(APIView):
 
         Lesson.delete()
         return Response({"detail": "Lesson deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseEnrollmentView(APIView):
+    """
+    Handle course enrollment
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, course_id):
+        """Enroll in a course"""
+        try:
+            course = get_object_or_404(Course, id=course_id)
+
+            # Check if already enrolled
+            existing_enrollment = Enrollment.objects.filter(
+                user=request.user,
+                course=course
+            ).first()
+
+            if existing_enrollment:
+                return Response({
+                    'detail': f'Already enrolled with status: {existing_enrollment.status}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create enrollment
+            enrollment = Enrollment.objects.create(
+                user=request.user,
+                course=course,
+                status='pending'  # Requires approval
+            )
+
+            serializer = EnrollmentSerializer(enrollment)
+            return Response({
+                'detail': 'Enrollment request submitted successfully',
+                'enrollment': serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                'detail': f'Error enrolling in course: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class MyEnrollmentsView(APIView):
+    """
+    Get user's enrollments
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """Get all enrollments for the authenticated user"""
+        enrollments = Enrollment.objects.filter(user=request.user).select_related('course', 'course__instructor')
+
+        enrollments_data = []
+        for enrollment in enrollments:
+            course_data = {
+                'id': enrollment.course.id,
+                'title': enrollment.course.title,
+                'description': enrollment.course.description,
+                'instructor': {
+                    'id': enrollment.course.instructor.id,
+                    'name': enrollment.course.instructor.name,
+                    'email': enrollment.course.instructor.email,
+                } if enrollment.course.instructor else None,
+                'image': enrollment.course.image.url if hasattr(enrollment.course, 'image') and enrollment.course.image else None,
+                'price': getattr(enrollment.course, 'price', 0),
+                'duration': getattr(enrollment.course, 'duration', ''),
+                'level': getattr(enrollment.course, 'level', ''),
+                'certificate_available': getattr(enrollment.course, 'certificate_available', False),
+            }
+
+            enrollments_data.append({
+                'id': enrollment.id,
+                'course': course_data,
+                'status': enrollment.status,
+                'enrolled_on': enrollment.enrolled_on.strftime('%Y-%m-%d'),
+                'progress': enrollment.progress,
+            })
+
+        return Response(enrollments_data, status=status.HTTP_200_OK)
+
+
+class EnrollmentProgressView(APIView):
+    """
+    Update enrollment progress
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, enrollment_id):
+        """Update progress for an enrollment"""
+        try:
+            enrollment = get_object_or_404(
+                Enrollment,
+                id=enrollment_id,
+                user=request.user,
+                status='approved'  # Only approved enrollments can have progress updated
+            )
+
+            progress = request.data.get('progress', 0)
+            if not isinstance(progress, int) or progress < 0 or progress > 100:
+                return Response({
+                    'detail': 'Progress must be an integer between 0 and 100'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            enrollment.progress = progress
+            if progress == 100:
+                enrollment.certificate_earned = True
+            enrollment.save()
+
+            return Response({
+                'id': enrollment.id,
+                'progress': enrollment.progress,
+                'certificate_earned': enrollment.certificate_earned
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'detail': f'Error updating progress: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CourseEnrollmentsView(APIView):
+    """
+    For course owners to view and manage enrollments
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, course_id):
+        """Get all enrollments for a course (course owner only)"""
+        try:
+            course = get_object_or_404(Course, id=course_id)
+
+            # Check if user is the course instructor
+            if course.instructor != request.user:
+                return Response({
+                    'detail': 'Only the course instructor can view enrollments'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            enrollments = Enrollment.objects.filter(course=course).select_related('user')
+
+            enrollments_data = []
+            for enrollment in enrollments:
+                enrollments_data.append({
+                    'id': enrollment.id,
+                    'user': {
+                        'id': enrollment.user.id,
+                        'name': enrollment.user.name,
+                        'email': enrollment.user.email,
+                    },
+                    'status': enrollment.status,
+                    'enrolled_on': enrollment.enrolled_on.strftime('%Y-%m-%d'),
+                    'progress': enrollment.progress,
+                })
+
+            return Response(enrollments_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'detail': f'Error fetching enrollments: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EnrollmentStatusView(APIView):
+    """
+    For course owners to approve/deny enrollments
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, enrollment_id):
+        """Update enrollment status (approve/deny)"""
+        try:
+            enrollment = get_object_or_404(Enrollment, id=enrollment_id)
+
+            # Check if user is the course instructor
+            if enrollment.course.instructor != request.user:
+                return Response({
+                    'detail': 'Only the course instructor can update enrollment status'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            new_status = request.data.get('status')
+            if new_status not in ['approved', 'denied']:
+                return Response({
+                    'detail': 'Status must be either "approved" or "denied"'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            enrollment.status = new_status
+            enrollment.save()
+
+            return Response({
+                'id': enrollment.id,
+                'status': enrollment.status,
+                'user': enrollment.user.name,
+                'course': enrollment.course.title
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'detail': f'Error updating enrollment status: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)

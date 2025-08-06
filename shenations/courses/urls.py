@@ -4,7 +4,9 @@ from .views import (
     LessonListCreateView, LessonDetailView,
     EnrollmentListCreateView, EnrollmentDetailView,
     LessonProgressListCreateView,
-    CourseReviewListCreateView, CourseReviewDetailView
+    CourseReviewListCreateView, CourseReviewDetailView,
+    CourseEnrollmentView, MyEnrollmentsView, EnrollmentProgressView,
+    CourseEnrollmentsView, EnrollmentStatusView
 )
 
 urlpatterns = [
@@ -28,4 +30,11 @@ urlpatterns = [
     # Course Reviews - nested under course (course_pk) for listing and creating
     path('<int:course_pk>/reviews/', CourseReviewListCreateView.as_view(), name='course-review-list-create'),
     path('reviews/<int:pk>/', CourseReviewDetailView.as_view(), name='course-review-detail'),
+
+    # New Enrollment Management
+    path('<int:course_id>/enroll/', CourseEnrollmentView.as_view(), name='course-enroll'),
+    path('my-enrollments/', MyEnrollmentsView.as_view(), name='my-enrollments'),
+    path('enrollments/<int:enrollment_id>/progress/', EnrollmentProgressView.as_view(), name='enrollment-progress'),
+    path('<int:course_id>/enrollments/', CourseEnrollmentsView.as_view(), name='course-enrollments'),
+    path('enrollments/<int:enrollment_id>/status/', EnrollmentStatusView.as_view(), name='enrollment-status'),
 ]

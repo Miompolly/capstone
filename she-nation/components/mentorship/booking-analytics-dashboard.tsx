@@ -65,14 +65,9 @@ export function BookingAnalyticsDashboard() {
       setIsLoading(true);
       const baseUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082";
-
-      // Import the token utility function
-      const { getAuthToken } = await import("@/lib/auth/auth-service");
-      const token = getAuthToken();
-
       const response = await fetch(`${baseUrl}/api/auth/bookings/analytics/`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       });
 

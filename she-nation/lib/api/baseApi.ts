@@ -25,10 +25,13 @@ export const baseApi = createApi({
     "LessonProgress",
     "Review",
     "Opportunity",
+    "Opportunities",
     "Application",
+    "Applications",
     "Booking",
     "Bookings",
     "Mentors",
+    "Analytics",
   ],
   endpoints: () => ({}),
 });

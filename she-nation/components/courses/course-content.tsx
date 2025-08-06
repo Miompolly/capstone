@@ -584,7 +584,6 @@ export function CourseContent({ courseId }: CourseContentProps) {
 
     return "document";
   };
-  
 
   const getIconForType = (type: string) => {
     switch (type) {

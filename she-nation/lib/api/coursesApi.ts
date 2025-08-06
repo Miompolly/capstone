@@ -1,4 +1,4 @@
-import { baseApi } from "./baseApi"
+import { baseApi } from "./baseApi";
 import type {
   CoursePayload,
   CourseResponse,
@@ -7,7 +7,7 @@ import type {
   UpdateCoursePayload,
   UpdateCourseResponse,
   DeleteCourseResponse,
-} from "../types/api"
+} from "../types/api";
 
 export const coursesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -27,7 +27,10 @@ export const coursesApi = baseApi.injectEndpoints({
       query: (id) => `/courses/${id}/`,
       providesTags: (result, error, id) => [{ type: "Course", id }],
     }),
-    updateCourse: builder.mutation<UpdateCourseResponse, { id: number; course: UpdateCoursePayload }>({
+    updateCourse: builder.mutation<
+      UpdateCourseResponse,
+      { id: number; course: UpdateCoursePayload }
+    >({
       query: ({ id, course }) => ({
         url: `/courses/${id}/`,
         method: "PUT",
@@ -42,8 +45,110 @@ export const coursesApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: (result, error, id) => [{ type: "Course", id }],
     }),
+
+    // Enrollment endpoints
+    enrollInCourse: builder.mutation<
+      {
+        id: number;
+        course: number;
+        user: number;
+        status: "pending" | "approved" | "denied";
+        enrolled_on: string;
+        progress: number;
+      },
+      number
+    >({
+      query: (courseId) => ({
+        url: `/courses/${courseId}/enroll/`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Enrollment", "Course"],
+    }),
+
+    getMyEnrollments: builder.query<
+      Array<{
+        id: number;
+        course: {
+          id: number;
+          title: string;
+          description: string;
+          instructor: {
+            id: number;
+            name: string;
+            email: string;
+          };
+          image?: string;
+          price: number;
+          duration: string;
+          level: string;
+          certificate_available: boolean;
+        };
+        status: "pending" | "approved" | "denied";
+        enrolled_on: string;
+        progress: number;
+      }>,
+      void
+    >({
+      query: () => "/courses/my-enrollments/",
+      providesTags: ["Enrollment"],
+    }),
+
+    updateEnrollmentProgress: builder.mutation<
+      {
+        id: number;
+        progress: number;
+      },
+      {
+        enrollmentId: number;
+        progress: number;
+      }
+    >({
+      query: ({ enrollmentId, progress }) => ({
+        url: `/courses/enrollments/${enrollmentId}/progress/`,
+        method: "PATCH",
+        body: { progress },
+      }),
+      invalidatesTags: ["Enrollment"],
+    }),
+
+    // For course owners to manage enrollments
+    getCourseEnrollments: builder.query<
+      Array<{
+        id: number;
+        user: {
+          id: number;
+          name: string;
+          email: string;
+        };
+        status: "pending" | "approved" | "denied";
+        enrolled_on: string;
+        progress: number;
+      }>,
+      number
+    >({
+      query: (courseId) => `/courses/${courseId}/enrollments/`,
+      providesTags: ["Enrollment"],
+    }),
+
+    updateEnrollmentStatus: builder.mutation<
+      {
+        id: number;
+        status: "pending" | "approved" | "denied";
+      },
+      {
+        enrollmentId: number;
+        status: "approved" | "denied";
+      }
+    >({
+      query: ({ enrollmentId, status }) => ({
+        url: `/courses/enrollments/${enrollmentId}/status/`,
+        method: "PATCH",
+        body: { status },
+      }),
+      invalidatesTags: ["Enrollment"],
+    }),
   }),
-})
+});
 
 export const {
   useCreateCourseMutation,
@@ -51,4 +156,9 @@ export const {
   useGetCourseByIdQuery,
   useUpdateCourseMutation,
   useDeleteCourseMutation,
-} = coursesApi
+  useEnrollInCourseMutation,
+  useGetMyEnrollmentsQuery,
+  useUpdateEnrollmentProgressMutation,
+  useGetCourseEnrollmentsQuery,
+  useUpdateEnrollmentStatusMutation,
+} = coursesApi;

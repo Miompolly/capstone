@@ -21,6 +21,18 @@ export function LoginForm() {
   const router = useRouter();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
+  // Debug API URL
+  console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+  console.log(
+    "Full base URL:",
+    (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082") + "/api"
+  );
+  console.log(
+    "Login endpoint URL:",
+    (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8082") +
+      "/api/auth/login/"
+  );
+
   // Role-based redirect mapping
   const getRoleBasedRoute = (role: string) => {
     const roleRoutes = {
@@ -51,7 +63,9 @@ export function LoginForm() {
 
     try {
       dispatch(loginStart());
+      console.log("Attempting login with:", { email, password: "***" });
       const result = await login({ email, password }).unwrap();
+      console.log("Login successful:", result);
 
       dispatch(
         loginSuccess({
@@ -67,6 +81,11 @@ export function LoginForm() {
       const targetRoute = getRoleBasedRoute(result.user.role);
       router.push(targetRoute);
     } catch (error: any) {
+      console.error("Login error details:", error);
+      console.error("Error status:", error?.status);
+      console.error("Error data:", error?.data);
+      console.error("Full error object:", JSON.stringify(error, null, 2));
+
       const errorMessage =
         error?.data?.detail || error?.data?.message || "Login failed";
       dispatch(loginFailure(errorMessage));

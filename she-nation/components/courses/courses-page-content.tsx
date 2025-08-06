@@ -186,7 +186,7 @@ export function CoursesPageContent() {
           <h3 className="text-xl font-semibold font-poppins text-gray-900">
             My Courses
           </h3>
-          {(user?.role === "Mentor" || user?.role === "Expert" )&& (
+          {(user?.role === "Mentor" || user?.role === "Expert") && (
             <button
               onClick={handleCreateCourse}
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"

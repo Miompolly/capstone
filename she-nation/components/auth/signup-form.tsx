@@ -3,6 +3,8 @@
 import type React from "react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+
 import {
   Eye,
   EyeOff,
@@ -294,13 +296,19 @@ export function SignupForm() {
           />
           <span className="ml-2 text-sm text-gray-600">
             I agree to the{" "}
-            <a href="#" className="text-purple-600 hover:text-purple-700">
+            <Link
+              href="/terms-of-service"
+              className="text-purple-600 hover:text-purple-700"
+            >
               Terms of Service
-            </a>{" "}
+            </Link>{" "}
             and{" "}
-            <a href="#" className="text-purple-600 hover:text-purple-700">
+            <Link
+              href="/privacy-policy"
+              className="text-purple-600 hover:text-purple-700"
+            >
               Privacy Policy
-            </a>
+            </Link>
           </span>
         </div>
 

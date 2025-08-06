@@ -11,20 +11,18 @@ import {
   UserPlus,
   Eye,
   Ban,
+  TrendingUp,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/lib/hooks";
 import { useGetAllUsersQuery, useVerifyUserMutation } from "@/lib/api/authApi";
 import { useGetAllCoursesQuery } from "@/lib/api/coursesApi";
 import { useGetAllEnrollmentsQuery } from "@/lib/api/enrollmentsApi";
-// Assume these new API hooks exist for analytics and system health
-import {
-  useGetUserGrowthQuery,
-  useGetActiveSessionsQuery,
-  useGetRevenueQuery,
-  useGetSystemHealthQuery,
-} from "@/lib/api/analyticsApi"; // New API for analytics
-import { useSuspendUserMutation } from "@/lib/api/authApi"; // Assuming a new mutation for suspending users
+// Analytics API hooks
+// import { useGetAnalyticsQuery } from "@/lib/api/analyticsApi"; // Example analytics hook
+// import { useGetSystemHealthQuery } from "@/lib/api/healthApi"; // Example system health hook
 
 import { UserManagement } from "@/components/admin/user-management";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
@@ -50,70 +48,210 @@ export function AdminDashboard() {
   const { data: enrollments = [], isLoading: enrollmentsLoading } =
     useGetAllEnrollmentsQuery();
   const [verifyUser] = useVerifyUserMutation();
-  const [suspendUser] = useSuspendUserMutation(); // New mutation for suspending users
 
-  // Fetch analytics and system health data
-  const { data: userGrowth = 0, isLoading: userGrowthLoading } =
-    useGetUserGrowthQuery();
-  const { data: activeSessions = 0, isLoading: activeSessionsLoading } =
-    useGetActiveSessionsQuery();
-  const { data: monthlyRevenue = 0, isLoading: monthlyRevenueLoading } =
-    useGetRevenueQuery();
-  const { data: systemHealth = 0, isLoading: systemHealthLoading } =
-    useGetSystemHealthQuery();
+  // Fetch analytics and system health data (Uncomment and replace with your actual hooks)
+  // Current values simulate 'no data available' for demonstration
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    error: analyticsError,
+  } = { data: undefined, isLoading: false, error: undefined }; // Placeholder for useGetAnalyticsQuery()
+  const { data: platformHealth, isLoading: healthLoading } = {
+    data: undefined,
+    isLoading: false,
+  }; // Placeholder for useGetSystemHealthQuery()
 
   const isLoading =
     usersLoading ||
     coursesLoading ||
     enrollmentsLoading ||
-    userGrowthLoading ||
-    activeSessionsLoading ||
-    monthlyRevenueLoading ||
-    systemHealthLoading;
+    analyticsLoading ||
+    healthLoading;
 
-  // Calculate real stats
-  const activeUsers = users.filter((u) => u.is_active).length;
-  const totalEnrollments = enrollments.length;
-  const activeCourses = courses.length;
+  if (analyticsError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="text-red-500 mb-4">
+          <svg
+            className="w-12 h-12"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          Unable to Load Admin Dashboard
+        </h3>
+        <p className="text-gray-600 mb-4">
+          We couldn't load the admin dashboard data. Please try refreshing the
+          page.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
 
-  // Placeholder for calculating change - this would ideally come from your API
-  // or be calculated based on historical data fetched from the API.
-  const enrollmentChange = "+8% this week"; // Example: replace with actual calculation
+  /**
+   * Helper function to safely get and format data for display.
+   * Returns an empty string if value is null or undefined, otherwise returns formatted value.
+   * @param value The value to display.
+   * @param type The type of value (e.g., 'percentage', 'currency', 'number').
+   * @param decimalPlaces Number of decimal places for numbers.
+   */
+  const getDisplayValue = (
+    value: number | string | undefined | null,
+    type: "percentage" | "currency" | "number" | "string" = "number",
+    decimalPlaces: number = 0
+  ) => {
+    if (value === undefined || value === null) {
+      return ""; // Return empty string instead of "N/A"
+    }
+
+    if (typeof value === "number") {
+      switch (type) {
+        case "percentage":
+          return `${value.toFixed(decimalPlaces)}%`;
+        case "currency":
+          return `$${value.toLocaleString(undefined, {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          })}`;
+        case "number":
+          return value.toLocaleString(undefined, {
+            minimumFractionDigits: decimalPlaces,
+            maximumFractionDigits: decimalPlaces,
+          });
+        default:
+          return String(value);
+      }
+    }
+    return String(value);
+  };
+
+  const systemHealthValue =
+    platformHealth?.systemStatus === "healthy"
+      ? 95
+      : platformHealth?.systemStatus === "warning"
+      ? 75
+      : platformHealth?.systemStatus === "critical"
+      ? 45
+      : undefined; // Make it undefined if no specific status
+
   const systemHealthStatus =
-    systemHealth === 100 ? "All systems operational" : "Monitoring issues";
+    platformHealth?.systemStatus === "healthy"
+      ? "All systems operational"
+      : platformHealth?.systemStatus === "warning"
+      ? "Monitoring issues"
+      : platformHealth?.systemStatus === "critical"
+      ? "Critical issues"
+      : ""; // Empty string for status if unavailable
 
-  const adminStats = [
-    {
+  // Prepare admin stats, only including a stat if its core value is available
+  const adminStats = [];
+
+  if (analytics?.totalUsers !== undefined && analytics?.totalUsers !== null) {
+    const userGrowthPercent = analytics.monthlyGrowth?.users;
+    adminStats.push({
       title: "Total Users",
-      value: users.length.toString(),
-      change: `${activeUsers} active`,
+      value: getDisplayValue(analytics.totalUsers),
+      change: `Active: ${getDisplayValue(analytics.activeUsers)}${
+        userGrowthPercent !== undefined && userGrowthPercent !== null
+          ? ` (${userGrowthPercent >= 0 ? "+" : ""}${getDisplayValue(
+              userGrowthPercent,
+              "percentage"
+            )} this month)`
+          : ""
+      }`,
       icon: Users,
       color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Active Enrollments",
-      value: totalEnrollments.toString(),
-      change: enrollmentChange, // Now dynamic or calculated based on more data
+      trend:
+        userGrowthPercent !== undefined && userGrowthPercent !== null
+          ? userGrowthPercent >= 0
+            ? "up"
+            : "down"
+          : "neutral", // Defaults to neutral if growth data isn't there
+    });
+  }
+
+  if (
+    analytics?.totalBookings !== undefined &&
+    analytics?.totalBookings !== null
+  ) {
+    adminStats.push({
+      title: "Total Bookings",
+      value: getDisplayValue(analytics.totalBookings),
+      change: `Success Rate: ${getDisplayValue(
+        analytics.platformMetrics?.sessionSuccessRate,
+        "percentage"
+      )}`,
       icon: Activity,
       color: "from-green-500 to-green-600",
-    },
-    {
-      title: "Total Courses",
-      value: activeCourses.toString(),
-      change: `${
-        courses.filter((c) => c.certificate_available).length
-      } with certificates`,
+      trend:
+        analytics.platformMetrics?.sessionSuccessRate !== undefined &&
+        analytics.platformMetrics?.sessionSuccessRate !== null
+          ? "up"
+          : "neutral",
+    });
+  }
+
+  if (
+    analytics?.activeCourses !== undefined &&
+    analytics?.activeCourses !== null
+  ) {
+    const courseGrowthPercent = analytics.monthlyGrowth?.courses;
+    adminStats.push({
+      title: "Active Courses",
+      value: getDisplayValue(analytics.activeCourses),
+      change: `Growth: ${
+        courseGrowthPercent !== undefined && courseGrowthPercent !== null
+          ? `${courseGrowthPercent >= 0 ? "+" : ""}${getDisplayValue(
+              courseGrowthPercent,
+              "percentage"
+            )} this month`
+          : ""
+      }`,
       icon: Shield,
-      color: "from-red-500 to-red-600",
-    },
-    {
+      color: "from-orange-500 to-orange-600",
+      trend:
+        courseGrowthPercent !== undefined && courseGrowthPercent !== null
+          ? courseGrowthPercent >= 0
+            ? "up"
+            : "down"
+          : "neutral",
+    });
+  }
+
+  // System Health card is slightly different, can display based on platformHealth or analytics.systemHealth
+  const healthValueForCard = analytics?.systemHealth || systemHealthValue;
+  if (healthValueForCard !== undefined && healthValueForCard !== null) {
+    adminStats.push({
       title: "System Health",
-      value: `${systemHealth}%`, // Now dynamic
-      change: systemHealthStatus, // Now dynamic
+      value: getDisplayValue(healthValueForCard, "percentage"),
+      change: systemHealthStatus,
       icon: Settings,
       color: "from-purple-500 to-purple-600",
-    },
-  ];
+      trend:
+        typeof healthValueForCard === "number"
+          ? healthValueForCard >= 90
+            ? "up"
+            : healthValueForCard >= 70
+            ? "neutral"
+            : "down"
+          : "neutral",
+    });
+  }
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -149,12 +287,8 @@ export function AdminDashboard() {
     if (
       window.confirm(`Are you sure you want to suspend user "${userName}"?`)
     ) {
-      try {
-        await suspendUser({ user_id: userId }).unwrap(); // Call the new suspendUser mutation
-        toast.success(`User "${userName}" has been suspended`);
-      } catch (error) {
-        toast.error("Failed to suspend user");
-      }
+      // TODO: Implement suspend user functionality
+      toast.error("Suspend user functionality not yet implemented");
     }
   };
 
@@ -335,13 +469,7 @@ export function AdminDashboard() {
                           </td>
                           <td className="py-4 px-6">
                             <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleViewUser(user.id)}
-                                className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded"
-                                title="View User"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
+                              
                               <button
                                 onClick={() => handleEditUser(user.id)}
                                 className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded"
@@ -391,48 +519,7 @@ export function AdminDashboard() {
           </div>
         );
 
-      case "analytics":
-        return (
-          <div className="space-y-6">
-            <h3 className="text-xl font-semibold font-poppins text-gray-900">
-              Platform Analytics
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="glass-effect rounded-xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-4">
-                  User Growth
-                </h4>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-purple-600">
-                    +{userGrowth}
-                  </p>
-                  <p className="text-sm text-gray-600">This month</p>
-                </div>
-              </div>
-              <div className="glass-effect rounded-xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-4">
-                  Session Activity
-                </h4>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-green-600">
-                    {activeSessions}
-                  </p>
-                  <p className="text-sm text-gray-600">Active sessions</p>
-                </div>
-              </div>
-              <div className="glass-effect rounded-xl p-6">
-                <h4 className="font-semibold text-gray-900 mb-4">Revenue</h4>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-blue-600">
-                    ${monthlyRevenue.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">This month</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
+    
       case "settings":
         return (
           <div className="space-y-6">
@@ -485,10 +572,23 @@ export function AdminDashboard() {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (Conditionally Rendered) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {adminStats.map((stat) => {
           const Icon = stat.icon;
+          const TrendIcon =
+            stat.trend === "up"
+              ? TrendingUp
+              : stat.trend === "down"
+              ? TrendingDown
+              : Minus;
+          const trendColor =
+            stat.trend === "up"
+              ? "text-green-600"
+              : stat.trend === "down"
+              ? "text-red-600"
+              : "text-gray-600";
+
           return (
             <div
               key={stat.title}
@@ -500,6 +600,7 @@ export function AdminDashboard() {
                 >
                   <Icon className="w-6 h-6 text-white" />
                 </div>
+                <TrendIcon className={`w-5 h-5 ${trendColor}`} />
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">
@@ -508,11 +609,15 @@ export function AdminDashboard() {
                 <p className="text-2xl font-bold text-gray-900 mb-1">
                   {stat.value}
                 </p>
-                <p className="text-sm text-green-600">{stat.change}</p>
+                <p className={`text-sm ${trendColor} flex items-center`}>
+                  <TrendIcon className="w-4 h-4 mr-1" />
+                  {stat.change}
+                </p>
               </div>
             </div>
           );
         })}
+      
       </div>
 
       {/* Tabs */}
@@ -521,7 +626,7 @@ export function AdminDashboard() {
           <nav className="flex space-x-8">
             {[
               { id: "users", label: "User Management" },
-              { id: "analytics", label: "Analytics" },
+         
               { id: "settings", label: "Settings" },
             ].map((tab) => (
               <button
